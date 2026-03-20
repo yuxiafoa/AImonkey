@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A股回测系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>A股回测系统</h1>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="data">数据管理</button>
+                <button class="nav-btn" data-tab="select">选股</button>
+                <button class="nav-btn" data-tab="backtest">回测</button>
+                <button class="nav-btn" data-tab="report">报告</button>
+            </nav>
+        </header>
+
+        <main class="main">
+            <section id="data-section" class="section active">
+                <div class="card">
+                    <h2>数据上传</h2>
+                    <div class="upload-area" id="upload-area">
+                        <p>拖拽ZIP文件到这里或点击上传</p>
+                        <input type="file" id="file-input" accept=".zip" hidden>
+                        <button class="btn" id="upload-btn">选择文件</button>
+                    </div>
+                    <div id="upload-status" class="status"></div>
+                </div>
+
+                <div class="card">
+                    <h2>已导入的股票</h2>
+                    <div class="table-container">
+                        <table id="stocks-table">
+                            <thead>
+                                <tr>
+                                    <th>代码</th>
+                                    <th>名称</th>
+                                    <th>数据条数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="select-section" class="section">
+                <div class="card">
+                    <h2>选股公式</h2>
+                    <div class="formula-help">
+                        <p>支持的变量: <code>OPEN</code>, <code>HIGH</code>, <code>LOW</code>, <code>CLOSE</code>, <code>VOLUME</code></p>
+                        <p>支持的函数: <code>MA(close, n)</code>, <code>EMA(close, n)</code>, <code>MACD(close)</code>, <code>RSI(close, n)</code>, <code>KDJ(close)</code>, <code>BOLL(close, n)</code></p>
+                        <p>示例: <code>CLOSE &gt; MA(CLOSE, 5)</code> 或 <code>RSI(CLOSE, 14) &gt; 50</code></p>
+                    </div>
+                    <textarea id="formula-input" class="formula-input" placeholder="输入选股公式，每行一个（多条件选股）"></textarea>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>开始日期</label>
+                            <input type="date" id="select-date-start" placeholder="YYYYMMDD">
+                        </div>
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" id="select-date-end" placeholder="YYYYMMDD">
+                        </div>
+                        <div class="form-group">
+                            <label>组合方式</label>
+                            <select id="combine-mode">
+                                <option value="AND">AND (所有条件都满足)</option>
+                                <option value="OR">OR (任一条件满足)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="run-select-btn">执行选股</button>
+                    <div id="select-status" class="status"></div>
+                </div>
+
+                <div class="card">
+                    <h2>选股结果</h2>
+                    <div class="table-container">
+                        <table id="select-results-table">
+                            <thead>
+                                <tr>
+                                    <th>代码</th>
+                                    <th>名称</th>
+                                    <th>满足条件</th>
+                                    <th>选择</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <button class="btn" id="to-backtest-btn" disabled>进入回测</button>
+                </div>
+            </section>
+
+            <section id="backtest-section" class="section">
+                <div class="card">
+                    <h2>回测参数</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>选股公式</label>
+                            <input type="text" id="backtest-formula" placeholder="例如: MA(CLOSE,5) > MA(CLOSE,10)">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>初始资金 (元)</label>
+                            <input type="number" id="initial-capital" value="100000">
+                        </div>
+                        <div class="form-group">
+                            <label>佣金率</label>
+                            <input type="number" id="commission-rate" value="0.0003" step="0.0001">
+                        </div>
+                        <div class="form-group">
+                            <label>滑点</label>
+                            <input type="number" id="slippage" value="0.001" step="0.001">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>回测开始日期</label>
+                            <input type="date" id="backtest-date-start">
+                        </div>
+                        <div class="form-group">
+                            <label>回测结束日期</label>
+                            <input type="date" id="backtest-date-end">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="run-backtest-btn">执行回测</button>
+                    <div id="backtest-status" class="status"></div>
+                </div>
+
+                <div class="card">
+                    <h2>回测结果</h2>
+                    <div id="backtest-metrics" class="metrics-grid"></div>
+                </div>
+            </section>
+
+            <section id="report-section" class="section">
+                <div class="card">
+                    <h2>回测报告</h2>
+                    <div id="report-metrics" class="metrics-grid"></div>
+                </div>
+
+                <div class="card">
+                    <h2>收益率曲线</h2>
+                    <div id="equity-chart" class="chart-container"></div>
+                </div>
+
+                <div class="card">
+                    <h2>交易记录</h2>
+                    <div class="table-container">
+                        <table id="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>股票</th>
+                                    <th>操作</th>
+                                    <th>价格</th>
+                                    <th>数量</th>
+                                    <th>金额</th>
+                                    <th>佣金</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>导出报告</h2>
+                    <div class="export-buttons">
+                        <button class="btn" id="export-pdf-btn">导出PDF</button>
+                        <button class="btn" id="export-csv-btn">导出CSV</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
