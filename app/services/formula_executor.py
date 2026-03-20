@@ -77,6 +77,10 @@ class FormulaEvaluator:
             return [1.0 if a == b else 0.0 for a, b in zip(left, right)]
         elif op == '!=':
             return [1.0 if a != b else 0.0 for a, b in zip(left, right)]
+        elif op == 'AND':
+            return [1.0 if (a != 0 and b != 0) else 0.0 for a, b in zip(left, right)]
+        elif op == 'OR':
+            return [1.0 if (a != 0 or b != 0) else 0.0 for a, b in zip(left, right)]
         
         return [0.0] * len(left)
     
@@ -118,6 +122,9 @@ class FormulaEvaluator:
             return [max(a, b) for a, b in zip(args[0], args[1])]
         elif func_name == 'MIN':
             return [min(a, b) for a, b in zip(args[0], args[1])]
+        elif func_name == 'ATAN':
+            import math
+            return [math.atan(v) for v in args[0]]
         
         return [0.0] * self.context.length
     

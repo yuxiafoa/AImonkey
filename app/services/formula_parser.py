@@ -231,14 +231,32 @@ class Parser:
         
         return node
     
-    def parse(self) -> ASTNode:
+    def logical_and_expr(self) -> ASTNode:
         node = self.expr()
+        
+        while self.current_token.type == TokenType.IDENTIFIER and self.current_token.value.upper() == 'AND':
+            self.eat(TokenType.IDENTIFIER)
+            node = BinaryOpNode(node, 'AND', self.expr())
+        
+        return node
+    
+    def logical_or_expr(self) -> ASTNode:
+        node = self.logical_and_expr()
+        
+        while self.current_token.type == TokenType.IDENTIFIER and self.current_token.value.upper() == 'OR':
+            self.eat(TokenType.IDENTIFIER)
+            node = BinaryOpNode(node, 'OR', self.logical_and_expr())
+        
+        return node
+    
+    def parse(self) -> ASTNode:
+        node = self.logical_or_expr()
         
         while self.current_token.type == TokenType.OPERATOR and self.current_token.value == ';':
             self.eat(TokenType.OPERATOR)
             if self.current_token.type == TokenType.EOF:
                 break
-            node = self.expr()
+            node = self.logical_or_expr()
         
         if self.current_token.type == TokenType.OPERATOR and self.current_token.value == ':=':
             self.eat(TokenType.OPERATOR)
