@@ -25,7 +25,7 @@ class Token:
 
 
 class Lexer:
-    OPERATORS = {'+', '-', '*', '/', '>', '<', '>=', '<=', '==', '!='}
+    OPERATORS = {'+', '-', '*', '/', '>', '<', '>=', '<=', '==', '!=', ':='}
     
     def __init__(self, text: str):
         self.text = text
@@ -78,7 +78,9 @@ class Lexer:
         start_col = self.col
         op = self.advance()
         
-        if op in '><=' and self.peek() == '=':
+        if op == ':' and self.peek() == '=':
+            op += self.advance()
+        elif op in '><=' and self.peek() == '=':
             op += self.advance()
         elif op == '=' and self.peek() == '=':
             op += self.advance()
@@ -101,7 +103,7 @@ class Lexer:
             if char.isalpha() or char == '_':
                 return self.read_identifier()
             
-            if char in self.OPERATORS:
+            if char in self.OPERATORS or char in ':':
                 return self.read_operator()
             
             if char == '(':
@@ -115,6 +117,10 @@ class Lexer:
             if char == ',':
                 self.advance()
                 return Token(TokenType.COMMA, ',', self.line, self.col - 1)
+            
+            if char == ';':
+                self.advance()
+                return Token(TokenType.OPERATOR, ';', self.line, self.col - 1)
             
             raise self.error(f"Unexpected character: {char!r}")
         
@@ -228,8 +234,23 @@ class Parser:
     def parse(self) -> ASTNode:
         node = self.expr()
         
+        while self.current_token.type == TokenType.OPERATOR and self.current_token.value == ';':
+            self.eat(TokenType.OPERATOR)
+            if self.current_token.type == TokenType.EOF:
+                break
+            node = self.expr()
+        
+        if self.current_token.type == TokenType.OPERATOR and self.current_token.value == ':=':
+            self.eat(TokenType.OPERATOR)
+            node = self.parse()
+        
+        if self.current_token.type == TokenType.OPERATOR and self.current_token.value == ';':
+            self.eat(TokenType.OPERATOR)
+        
         if self.current_token.type != TokenType.EOF:
             raise self.error(f"Unexpected token: {self.current_token}")
+        
+        return node
         
         return node
 

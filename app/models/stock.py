@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from app.models import db
+from sqlalchemy import func
 
 
 class Stock(db.Model):
@@ -11,7 +12,7 @@ class Stock(db.Model):
     name = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=db.func.current_timestamp())
     
-    daily_data = relationship('DailyData', back_populates='stock', cascade='all, delete-orphan')
+    daily_data = relationship('DailyData', back_populates='stock', cascade='all, delete-orphan', lazy='dynamic')
     
     __table_args__ = (
         Index('idx_stock_code', 'code'),
@@ -23,7 +24,7 @@ class Stock(db.Model):
             'code': self.code,
             'name': self.name,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'data_count': len(self.daily_data) if self.daily_data else 0
+            'data_count': self.daily_data.count()
         }
 
 

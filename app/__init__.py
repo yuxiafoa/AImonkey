@@ -2,10 +2,15 @@ from flask import Flask
 from flask_cors import CORS
 from app.config import Config
 from app.models import db
+import os
 
 
 def create_app(config_class=Config):
-    app = Flask(__name__)
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    template_dir = os.path.join(base_dir, 'templates')
+    static_dir = os.path.join(base_dir, 'static')
+    
+    app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(config_class)
     
     CORS(app)

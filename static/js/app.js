@@ -49,13 +49,13 @@ function initUpload() {
         uploadArea.style.borderColor = '#ccc';
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            uploadFile(files[0]);
+            uploadFiles(files);
         }
     });
 
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-            uploadFile(e.target.files[0]);
+            uploadFiles(e.target.files);
         }
     });
 
@@ -65,34 +65,88 @@ function initUpload() {
     });
 }
 
-async function uploadFile(file) {
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-        showStatus('upload-status', '只支持ZIP文件', 'error');
+async function uploadFiles(files) {
+    const txtFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.txt'));
+    
+    if (txtFiles.length === 0) {
+        showStatus('upload-status', '只支持TXT文件', 'error');
         return;
     }
 
-    const formData = new FormData();
-    formData.append('file', file);
+    showStatus('upload-status', `准备上传 ${txtFiles.length} 个文件...`, '');
+    showProgressBar(0);
 
-    showStatus('upload-status', '上传中...', '');
+    let successCount = 0;
+    let errorCount = 0;
+    let errors = [];
 
-    try {
-        const response = await fetch('/api/data/upload', {
-            method: 'POST',
-            body: formData
-        });
+    for (let i = 0; i < txtFiles.length; i++) {
+        const file = txtFiles[i];
+        const formData = new FormData();
+        formData.append('file', file);
 
-        const result = await response.json();
+        try {
+            const response = await fetch('/api/data/upload', {
+                method: 'POST',
+                body: formData
+            });
 
-        if (result.success) {
-            showStatus('upload-status', result.message, 'success');
-            loadStocks();
-        } else {
-            showStatus('upload-status', result.message, 'error');
+            const result = await response.json();
+            
+            if (result.success) {
+                successCount++;
+            } else {
+                errorCount++;
+                errors.push(result.message);
+            }
+        } catch (error) {
+            errorCount++;
+            errors.push(`${file.name}: ${error.message}`);
         }
-    } catch (error) {
-        showStatus('upload-status', '上传失败: ' + error.message, 'error');
+
+        const progress = Math.round(((i + 1) / txtFiles.length) * 100);
+        showProgressBar(progress);
+        showStatus('upload-status', `上传中... ${i + 1}/${txtFiles.length} (${progress}%)`, '');
     }
+
+    if (errorCount === 0) {
+        showStatus('upload-status', `成功导入 ${successCount} 个文件`, 'success');
+    } else {
+        showStatus('upload-status', `成功 ${successCount} 个，失败 ${errorCount} 个: ${errors.join(', ')}`, 'error');
+    }
+
+    hideProgressBar();
+    loadStocks();
+}
+
+function showProgressBar(percent) {
+    let progressBar = document.getElementById('upload-progress');
+    if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.id = 'upload-progress';
+        progressBar.innerHTML = `
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="progress-text" style="text-align:center;margin-top:5px;font-size:12px;">0%</div>
+        `;
+        progressBar.style.cssText = 'margin-top:10px;';
+        document.getElementById('upload-status').parentNode.insertBefore(progressBar, document.getElementById('upload-status').nextSibling);
+    }
+    
+    const bar = progressBar.querySelector('.progress-bar');
+    const text = progressBar.querySelector('.progress-text');
+    bar.style.width = percent + '%';
+    text.textContent = percent + '%';
+}
+
+function hideProgressBar() {
+    setTimeout(() => {
+        const progressBar = document.getElementById('upload-progress');
+        if (progressBar) {
+            progressBar.remove();
+        }
+    }, 1500);
 }
 
 async function loadStocks() {

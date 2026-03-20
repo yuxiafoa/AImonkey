@@ -11,33 +11,47 @@ def upload():
     if 'file' not in request.files:
         return jsonify({'success': False, 'message': '没有上传文件'}), 400
     
-    file = request.files['file']
-    if file.filename == '':
+    files = request.files.getlist('file')
+    if not files or all(f.filename == '' for f in files):
         return jsonify({'success': False, 'message': '文件名为空'}), 400
     
-    if file and file.filename.lower().endswith('.zip'):
-        filename = secure_filename(file.filename)
-        temp_path = os.path.join('/tmp', filename)
-        file.save(temp_path)
-        
-        try:
-            with open(temp_path, 'rb') as f:
-                imported_count, error_count, errors = DataService.import_zip(f)
-            
-            os.remove(temp_path)
-            
-            return jsonify({
-                'success': True,
-                'message': f'成功导入{imported_count}只股票，{error_count}个错误',
-                'imported_count': imported_count,
-                'error_count': error_count,
-                'errors': errors
-            })
-        except Exception as e:
-            os.remove(temp_path)
-            return jsonify({'success': False, 'message': f'导入失败: {str(e)}'}), 500
+    imported_count = 0
+    error_count = 0
+    errors = []
     
-    return jsonify({'success': False, 'message': '只支持ZIP文件'}), 400
+    for file in files:
+        if file and file.filename.lower().endswith('.txt'):
+            filename = secure_filename(file.filename)
+            temp_path = os.path.join('/tmp', filename)
+            
+            try:
+                file.save(temp_path)
+                with open(temp_path, 'rb') as f:
+                    result = DataService.import_txt_file(f)
+                
+                if result['success']:
+                    imported_count += result['imported_count']
+                else:
+                    error_count += 1
+                    errors.append(f"{filename}: {result['message']}")
+                
+                os.remove(temp_path)
+            except Exception as e:
+                error_count += 1
+                errors.append(f"{filename}: {str(e)}")
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        elif file.filename:
+            error_count += 1
+            errors.append(f"{file.filename}: 只支持TXT文件")
+    
+    return jsonify({
+        'success': True,
+        'message': f'成功导入{imported_count}只股票，{error_count}个错误',
+        'imported_count': imported_count,
+        'error_count': error_count,
+        'errors': errors
+    })
 
 
 @data_bp.route('/stocks', methods=['GET'])
